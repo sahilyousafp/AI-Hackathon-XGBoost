@@ -1,14 +1,15 @@
 # MNIST Digit Recognition with CNN and XGBoost
 
-This project implements a digit recognition system using the MNIST dataset. The system extracts features using a Convolutional Neural Network (CNN) and classifies digits using an XGBoost model. It includes a Flask-based web application for drawing digits and viewing predictions.
+This project demonstrates a digit recognition system using the MNIST dataset. The system is designed to showcase how XGBoost, a high-performance gradient boosting framework traditionally used for tabular data, can be integrated into an image classification pipeline by combining it with Convolutional Neural Networks (CNNs). The project also includes an interactive web interface that explains the underlying concepts visually and allows users to draw digits and view predictions.
 
 ---
 
 ## Features
 
-- **Feature Extraction**: Uses a CNN to extract features from handwritten digit images.
-- **Classification**: Uses XGBoost for high-performance digit classification.
-- **Web Interface**: Provides a Flask-based web application for drawing digits and viewing predictions.
+- **Interactive Web Interface**: Provides a user-friendly interface to draw digits, view predictions, and explore the model pipeline visually.
+- **XGBoost for Tabular Data**: Demonstrates XGBoost’s role in traditional tabular data processing and how it achieves high performance in classification tasks.
+- **XGBoost for Image Data**: Extends XGBoost to work with image data by extracting features using CNNs, showcasing how the pipeline adapts for MNIST classification.
+- **Visual Explanation**: Offers graphics and diagrams to explain how CNN feature extraction transforms image data into tabular form for XGBoost.
 
 ---
 
@@ -31,4 +32,3 @@ python -m venv mnist-env && source mnist-env/bin/activate  # For Windows: mnist-
 
 # Step 3: Install Dependencies
 pip install -r requirements.txt
-
