@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;400&display=swap" />
+    <title>Digit Recognition App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f7f7f7;
+            padding: 20px;
+        }
+        h1, h3 {
+            margin: 20px 0;
+        }
+        .canvas-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .canvas-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-left: 20px; /* Space between canvas and buttons */
+        }
+        .image-container {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 20px;
+        }
+        .image-frame {
+            width: 240px;
+            height: 240px;
+            border: 2px solid black;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        .grid-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+        }
+        .pixel-cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+            text-align: center;
+        }
+        .hidden {
+            opacity: 0;
+            transition: opacity 1.5s ease-in-out;
+        }
+        .visible {
+            opacity: 1;
+            transition: opacity 1.5s ease-in-out;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+        }
+        canvas {
+            border: 2px solid black;
+        }
+    </style>
+</head>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;400&display=swap">
+
+<body>
+    <h1>Interactive MNIST Digit Classifier</h1>
+    <h3>Step 1: Draw a Number (0-9)</h3>
+    
+    <div class="canvas-container">
+        <!-- Main Drawing Canvas -->
+        <canvas id="canvas" width="480" height="480"></canvas> <!-- Square canvas to match the bottom widths -->
+
+        <!-- Buttons Section -->
+        <div class="canvas-buttons">
+            <button onclick="clearCanvas()">Clear</button>
+            <button onclick="predict()">Predict</button>
+            <p id="result">Prediction: </p>
+        </div>
+    </div>
+
+    <div class="image-container">
+        <div>
+            <h3>Copy of Original Drawing</h3>
+            <div class="image-frame">
+                <canvas id="original-preview" width="240" height="240"></canvas>
+            </div>
+        </div>
+        <div>
+            <h3>12x12 Solid Pixel Image</h3>
+            <div class="image-frame">
+                <canvas id="resized-preview" width="240" height="240" class="hidden"></canvas>
+            </div>
+        </div>
+        <div>
+            <h3>12x12 Grayscale Values</h3>
+            <div class="image-frame">
+                <div id="pixel-grid" class="grid-overlay hidden"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const originalPreview = document.getElementById('original-preview').getContext('2d');
+        const resizedPreview = document.getElementById('resized-preview').getContext('2d');
+        const pixelGrid = document.getElementById('pixel-grid');
+        let isDrawing = false;
+        const brushSize = 20;
+
+        // Fill canvas with white background
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Event listeners for drawing
+        canvas.addEventListener('mousedown', (event) => {
+            isDrawing = true;
+            ctx.beginPath();
+            const { x, y } = getMousePos(canvas, event);
+            ctx.moveTo(x, y);
+        });
+
+        canvas.addEventListener('mouseup', () => isDrawing = false);
+        canvas.addEventListener('mouseout', () => isDrawing = false);
+
+        canvas.addEventListener('mousemove', (event) => {
+            if (!isDrawing) return;
+            const { x, y } = getMousePos(canvas, event);
+            ctx.lineWidth = brushSize;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = 'black';
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+            ctx.lineTo(x, y);
+            ctx.stroke();
+        });
+
+        function getMousePos(canvas, event) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: (event.clientX - rect.left) * (canvas.width / rect.width),
+                y: (event.clientY - rect.top) * (canvas.height / rect.height)
+            };
+        }
+
+        function clearCanvas() {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.beginPath();
+            originalPreview.clearRect(0, 0, 240, 240);
+            resizedPreview.clearRect(0, 0, 240, 240);
+            pixelGrid.innerHTML = '';
+            document.getElementById('resized-preview').classList.add('hidden');
+            pixelGrid.classList.add('hidden');
+            document.getElementById('result').innerText = 'Prediction: ';
+        }
+
+        function predict() {
+            // **1. Copy of Original Drawing (fill entire frame)**
+            originalPreview.clearRect(0, 0, 240, 240);
+            originalPreview.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, 240, 240);
+
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCanvas.width = 12;
+            tempCanvas.height = 12;
+
+            tempCtx.drawImage(canvas, 0, 0, 12, 12);
+
+            // **2. Resized Image with Solid Pixels**
+            const imageData = tempCtx.getImageData(0, 0, 12, 12);
+            resizedPreview.clearRect(0, 0, 240, 240);
+            resizedPreview.imageSmoothingEnabled = false;
+            resizedPreview.drawImage(tempCanvas, 0, 0, 12, 12, 0, 0, 240, 240);
+
+            pixelGrid.innerHTML = '';
+            for (let i = 0; i < imageData.data.length; i += 4) {
+                const gray = Math.round((imageData.data[i] + imageData.data[i + 1] + imageData.data[i + 2]) / 3);
+                const cell = document.createElement('div');
+                cell.className = 'pixel-cell';
+                cell.style.backgroundColor = `rgb(${gray}, ${gray}, ${gray})`;
+                cell.style.color = gray < 128 ? 'white' : 'black';
+                cell.innerText = gray;
+                pixelGrid.appendChild(cell);
+            }
+
+            document.getElementById('resized-preview').classList.remove('hidden');
+            setTimeout(() => {
+                pixelGrid.classList.remove('hidden');
+            }, 2000);
+
+            tempCanvas.toBlob(function(blob) {
+                const formData = new FormData();
+                formData.append('image', blob);
+
+                fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('result').innerText = `Prediction: ${data.prediction}`;
+                })
+                .catch(err => console.error('Error:', err));
+            });
+        }
+    </script>
+<!--placing the diagram-->
+
+<div class="xgboost-container">
+    <h2>How Images Become Vectors That XGBoost Uses to Predict the Number Class</h2>
+    <div class="xgboost-steps">
+        <!-- Grayscale Pixel Values Box -->
+        <div class="grayscale-box">
+            <h3>Grayscale Pixel Values</h3>
+            <div class="image-frame">
+                <!-- Replace the grid with a static image -->
+                <img src="{{ url_for('static', filename='images/grey-scale-pixels.png') }}" alt="Grayscale Pixel Values" class="grayscale-image">
+            </div>
+        </div>
+
+        <!-- Arrow between sections -->
+        <div class="arrow">
+            <img src="{{ url_for('static', filename='images/right-arrow.png') }}" alt="Arrow pointing right">
+        </div>
+
+        <!-- Matrix Table Image -->
+        <div class="matrix-image">
+            <h3>Pixel Dataset Table</h3>
+            <img src="{{ url_for('static', filename='images/matrix.jpg') }}" alt="Table of Pixel Values">
+        </div>
+
+        <!-- Arrow between sections -->
+        <div class="arrow">
+            <img src="{{ url_for('static', filename='images/right-arrow.png') }}" alt="Arrow pointing right">
+        </div>
+
+        <!-- XGBoost Logo -->
+        <div class="xgboost-logo">
+            <h3>XGBoost</h3>
+            <img src="{{ url_for('static', filename='images/xg-boost-logo.png') }}" alt="XGBoost Logo">
+        </div>
+    </div>
+</div>
+
+<!-- Updated styles to handle the static image -->
+<style>
+    .xgboost-container {
+        margin-top: 40px;
+        text-align: center;
+        background-color: black;
+        padding: 40px 20px;
+        color: white;
+    }
+    .xgboost-steps {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 20px;
+    }
+    .grayscale-box, .matrix-image, .-logo {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        max-width: 220px;
+    }
+    .grayscale-box .image-frame {
+        width: 100%;
+        height: auto;
+        border: 2px solid white;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    .grayscale-box img {
+        max-width: 100%;
+        max-height: 100%;
+        height: auto;
+        object-fit: cover;
+    }
+    .matrix-image img, .xgboost-logo img {
+        width: 100%;
+        max-width: 220px;
+        height: auto;
+        border: 2px solid white;
+        background-color: white;
+    }
+    .arrow {
+        width: 40px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    .arrow img {
+        width: 100%;
+        max-width: 40px;
+        height: auto;
+    }
+    h2, h3 {
+        margin-bottom: 10px;
+    }
+</style>
+
+<div class="gif-container">
+    <h2>CNN + XGBoost Visualization</h2>
+    <div class="full-screen-gif">
+        <img src="{{ url_for('static', filename='images/cnn-xgboost-gif.gif') }}" alt="CNN + XGBoost Process">
+    </div>
+
+    <div class="main-container">
+    
+        <!-- GO BACK Button -->
+        <a href="/" class="go-back-link">
+          <div class="rectangle">
+            <span class="go-back">GO BACK</span>
+          </div>
+        </a>
+      </div>
+
+<!-- Updated styles for the GIF section -->
+<style>
+    .gif-container {
+        margin-top: 0; /* Removes the gap between sections */
+        text-align: center;
+        background-color: black;
+        padding: 0; /* Removes padding around the GIF */
+        color: white;
+    }
+    .gif-container h2 {
+        margin-top: 40px;
+        margin-bottom: 20px;
+    }
+    .full-screen-gif {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh; /* Full height of the viewport */
+        overflow: hidden; /* Prevents any overflow */
+    }
+    .full-screen-gif img {
+        max-width: 100%;
+        max-height: 100%;
+        width: auto; /* Maintain aspect ratio */
+        height: auto; /* Maintain aspect ratio */
+        object-fit: cover; /* Ensures the GIF fills the container without distortion */
+    }
+    
+</style>  
+</a>
+</body>
+</html>
