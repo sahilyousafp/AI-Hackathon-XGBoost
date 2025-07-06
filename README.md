@@ -1,4 +1,6 @@
 # MNIST Digit Recognition with CNN and XGBoost
+![Decision tree](https://github.com/user-attachments/assets/da30e665-b683-4836-b779-3ffabce70bbe)
+![linear regression](https://github.com/user-attachments/assets/2ae73e36-9978-4b38-b5ce-ea547bdf7723)
 
 This project demonstrates a digit recognition system using the MNIST dataset. The system is designed to showcase how XGBoost, a high-performance gradient boosting framework traditionally used for tabular data, can be integrated into an image classification pipeline by combining it with Convolutional Neural Networks (CNNs). The project also includes an interactive web interface that explains the underlying concepts visually and allows users to draw digits and view predictions.
 
